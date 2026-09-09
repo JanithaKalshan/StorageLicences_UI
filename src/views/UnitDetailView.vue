@@ -10,6 +10,8 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import DefinitionList from '@/components/ui/DefinitionList.vue'
 import LicenceHistoryTable from '@/components/units/LicenceHistoryTable.vue'
 import PlacementsTable from '@/components/units/PlacementsTable.vue'
+import PlacementForm from '@/components/units/PlacementForm.vue'
+import type { CreatePlacementResponse } from '@/types/placement'
 
 const route = useRoute()
 const unitId = computed(() => Number(route.params.id))
@@ -18,6 +20,9 @@ const unit = ref<UnitDetailDto | null>(null)
 const isLoading = ref(false)
 const isNotFound = ref(false)
 const errorMessage = ref('')
+
+const isPlacementFormOpen = ref(false)
+const placementSuccessMessage = ref('')
 
 async function loadUnit() {
   isLoading.value = true
@@ -48,6 +53,27 @@ const unitInfoItems = computed(() => {
     { label: 'Remaining Boxes', value: String(unit.value.remainingBoxCapacity) },
   ]
 })
+
+// Refetches the unit without disturbing the loading/error state, so the
+// already-rendered page (and the placement success message) stays visible.
+async function refreshUnit() {
+  try {
+    unit.value = await getUnit(unitId.value)
+  } catch {
+    // Keep showing the previously loaded data if the background refresh fails.
+  }
+}
+
+function openPlacementForm() {
+  placementSuccessMessage.value = ''
+  isPlacementFormOpen.value = true
+}
+
+function onPlacementCreated(placement: CreatePlacementResponse) {
+  isPlacementFormOpen.value = false
+  placementSuccessMessage.value = `Placement #${placement.id} scheduled successfully.`
+  refreshUnit()
+}
 
 const licencesItems = computed(() => {
   const licences = unit.value?.licences
@@ -94,9 +120,20 @@ onMounted(loadUnit)
 
         <Card>
           <h2 class="card-title">Actions</h2>
-          <div class="action-buttons">
-            <button type="button" class="btn btn-secondary">Schedule Placement</button>
+          <p v-if="placementSuccessMessage" class="state-message is-success">
+            {{ placementSuccessMessage }}
+          </p>
+          <div v-if="!isPlacementFormOpen" class="action-buttons">
+            <button type="button" class="btn btn-primary" @click="openPlacementForm">
+              Schedule Placement
+            </button>
           </div>
+          <PlacementForm
+            v-else
+            :unit-id="unit.id"
+            @created="onPlacementCreated"
+            @cancel="isPlacementFormOpen = false"
+          />
         </Card>
       </div>
 
