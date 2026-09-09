@@ -1,0 +1,11 @@
+@import './base.css';
+@import './components.css';
+
+body {
+  background: var(--color-page-background);
+}
+
+#app {
+  min-height: 100vh;
+  font-weight: normal;
+}
