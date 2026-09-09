@@ -12,7 +12,6 @@ const router = createRouter({
     {
       path: '/units/:id',
       name: 'unit-detail',
-      // Unit Detail is not implemented yet; this route only supports navigation from the list.
       component: () => import('../views/UnitDetailView.vue'),
       props: true,
     },
