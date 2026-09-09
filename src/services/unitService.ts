@@ -1,15 +1,17 @@
 import type { UnitDetailDto, UnitListQuery, UnitListResponse } from '@/types/unit'
-import type { ApiErrorResponse } from '@/types/api'
+import type { ApiError, ApiErrorResponse } from '@/types/api'
+import { API_BASE_URL } from './httpConfig'
 
-const API_BASE_URL = 'https://localhost:7089'
-
-// Carries the HTTP status so callers can distinguish 404s from other failures.
+// Carries the HTTP status and structured errors so callers can distinguish
+// 404s and display individual validation failures.
 export class ApiRequestError extends Error {
   status: number
+  errors?: ApiError[]
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errors?: ApiError[]) {
     super(message)
     this.status = status
+    this.errors = errors
   }
 }
 
@@ -47,15 +49,17 @@ export async function getUnit(id: number): Promise<UnitDetailDto> {
   return response.json()
 }
 
-async function toApiRequestError(response: Response): Promise<ApiRequestError> {
+export async function toApiRequestError(response: Response): Promise<ApiRequestError> {
   let message = `Request failed with status ${response.status}.`
+  let errors: ApiError[] | undefined
   try {
     const body = (await response.json()) as ApiErrorResponse
     if (body.errors?.length) {
+      errors = body.errors
       message = body.errors.map((error) => error.description).join(' ')
     }
   } catch {
     // response body was not valid JSON; fall back to the status text message above
   }
-  return new ApiRequestError(message, response.status)
+  return new ApiRequestError(message, response.status, errors)
 }
